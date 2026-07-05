@@ -1,0 +1,461 @@
+openapi: 3.0.3
+info:
+  title: Culinary Studio Client API
+  description: API для клиентского веб-приложения студии кулинарных мастер-классов. Включает логику бронирования, кэширования слотов, систему лояльности и политику отмен.
+  version: 2.0.0
+servers:
+  - url: https://api.culinary-studio.ru/v1
+    description: Production API Server
+paths:
+
+  /auth/login:
+    post:
+      summary: Авторизация по Email и паролю (FR-01)
+      operationId: login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: "********"
+      responses:
+        '200':
+          description: Успешная авторизация. Токены дополнительно выставляются бэкендом в httpOnly cookies.
+          headers:
+            Set-Cookie:
+              description: Установка accessToken и refreshToken в httpOnly куки согласно NFR-14.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  refreshToken:
+                    type: string
+                  client:
+                    $ref: '#/components/schemas/Client'
+        '401':
+          description: Неверные учетные данные.
+
+  /slots:
+    get:
+      summary: Получение списка слотов расписания (FR-05, FR-06)
+      description: Возвращает активные слоты. По умолчанию возвращает данные на ближайшие 7 дней (date_from = now, date_to = now + 7 дней).
+      operationId: getSlots
+      tags:
+        - Slots
+      parameters:
+        - name: date_from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Начало диапазона дат (ISO 8601)
+        - name: date_to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: Конец диапазона дат (ISO 8601)
+        - name: program
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Фильтр по названию программы кулинарного класса
+        - name: chef_id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Фильтр по уникальному идентификатору шеф-повара
+        - name: only_available
+          in: query
+          required: false
+          schema:
+            type: boolean
+          description: Фильтр по наличию свободных мест (capacity_left > 0)
+      responses:
+        '200':
+          description: Список слотов успешно получен. Результат кэшируется во frontend storage (slots_cache).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated_at:
+                    type: string
+                    format: date-time
+                    example: "2026-07-05T20:30:00Z"
+                  slots:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SlotWithChef'
+        '400':
+          description: Некорректные параметры фильтрации.
+
+  /bookings:
+    post:
+      summary: Создание бронирования на слот (FR-09, UC-2)
+      description: Атомарная транзакция создания записи. Требует авторизации и отсутствия блокировок у пользователя.
+      operationId: createBooking
+      tags:
+        - Bookings
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - slot_id
+                - guest_count
+                - equipment
+                - allergies
+                - idempotency_key
+              properties:
+                slot_id:
+                  type: string
+                  format: uuid
+                  example: "e8b2b73a-4f51-4e4b-972a-194165dc9b01"
+                guest_count:
+                  type: integer
+                  minimum: 1
+                  description: Число участников (клиент + гости) согласно FR-13.
+                  example: 2
+                equipment:
+                  type: string
+                  enum: [own, rent]
+                  description: Вариант экипировки («Своя» или «Прокат») согласно FR-10.
+                  example: "rent"
+                allergies:
+                  type: string
+                  minLength: 1
+                  description: Информация об аллергиях. Обязательно к заполнению (FR-12). Не может быть пустой строкой.
+                  example: "Нет / не беспокоят"
+                idempotency_key:
+                  type: string
+                  format: uuid
+                  description: Уникальный токен операции для исключения дублирования при сетевых сбоях (NFR-5).
+                  example: "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d"
+      responses:
+        '201':
+          description: Бронирование успешно создано со статусом "pending" (оплата на месте).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  booking_id:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    example: "pending"
+                  price_final:
+                    type: integer
+                    description: Итоговая стоимость с учетом гостей, проката и скидки лояльности (FR-14, FR-16).
+                    example: 10500
+        '403':
+          description: Доступ запрещен. Клиент заблокирован в системе на 7 дней (FR-29).
+        '409':
+          description: Конфликт овербукинга. Мест в слоте осталось меньше, чем запрошено.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Слот отменен администрацией или окончательно удален из сетки (FR-22).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Получение списка бронирований текущего клиента (FR-18)
+      operationId: getMyBookings
+      tags:
+        - Bookings
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: status_group
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [upcoming, past, cancelled]
+          description: Вкладка/фильтр типов бронирований
+      responses:
+        '200':
+          description: Список бронирований пользователя.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Booking'
+
+  /bookings/{booking_id}/cancellation-check:
+    get:
+      summary: Предварительная проверка параметров отмены брони (UC-4)
+      description: Проверяет время до начала мастер-класса и возвращает информацию о возможных штрафах (блокировке за позднюю отмену).
+      operationId: checkCancellation
+      tags:
+        - Bookings
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: booking_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Данные о правилах отмены для конкретной брони.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  penalty:
+                    type: boolean
+                    description: Флаг применения штрафа (true, если до старта менее 12 часов).
+                    example: true
+                  block_duration_days:
+                    type: integer
+                    description: Срок блокировки в днях в случае поздней отмены.
+                    example: 7
+                  message:
+                    type: string
+                    example: "Поздняя отмена приведет к блокировке аккаунта на 7 дней."
+        '404':
+          description: Бронирование не найдено.
+
+  /bookings/{booking_id}:
+    delete:
+      summary: Отмена бронирования клиентом (FR-19, FR-20, UC-4)
+      description: Производит отмену брони. В случае поздней отмены (< 12 часов до старта) активирует блокировку клиента на 7 дней.
+      operationId: cancelBooking
+      tags:
+        - Bookings
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: booking_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Бронирование успешно отменено.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "cancelled"
+                  is_blocked:
+                    type: boolean
+                    description: Флаг текущего состояния блокировки аккаунта.
+                    example: true
+                  blocked_until:
+                    type: string
+                    format: date-time
+                    nullable: true
+                    example: "2026-07-12T21:27:00Z"
+        '404':
+          description: Бронирование не найдено.
+
+  /ratings:
+    post:
+      summary: Выставление оценки работе шеф-повара (FR-23, FR-24)
+      description: Позволяет оценить шефа от 1 до 5 звезд после успешного завершения класса. Доступно 1 раз на бронь. Без текста.
+      operationId: rateChef
+      tags:
+        - Ratings
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - booking_id
+                - chef_id
+                - stars
+              properties:
+                booking_id:
+                  type: string
+                  format: uuid
+                chef_id:
+                  type: string
+                  format: uuid
+                stars:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                  example: 5
+      responses:
+        '200':
+          description: Оценка успешно принята, рейтинг шефа пересчитан.
+        '400':
+          description: Оценка для этой брони уже выставлена или класс еще не завершен.
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: accessToken
+      description: Защищенный httpOnly сессионный токен доступа (NFR-14).
+
+  schemas:
+    Client:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        is_blocked:
+          type: boolean
+          description: Признак активности блокировки аккаунта за нарушение правил (FR-29).
+        blocked_until:
+          type: string
+          format: date-time
+          nullable: true
+        visit_count:
+          type: integer
+          description: Количество успешно посещенных мастер-классов (FR-03).
+
+    Chef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        first_name:
+          type: string
+        last_name:
+          type: string
+        rating:
+          type: number
+          format: float
+          description: Средний рейтинг шефа на основе оценок клиентов (FR-24).
+          example: 4.9
+        description:
+          type: string
+
+    SlotWithChef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        datetime_from:
+          type: string
+          format: date-time
+        datetime_to:
+          type: string
+          format: date-time
+        capacity_total:
+          type: integer
+        capacity_left:
+          type: integer
+          description: Количество оставшихся свободных мест для записи.
+        price_base:
+          type: integer
+          description: Базовая стоимость участия за 1 человека в рублях.
+        status:
+          type: string
+          enum: [active, cancelled]
+        chef:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+              description: Склеенное имя и фамилия для оптимизации фронтенд-кэша.
+              example: "Иван Иванов"
+            rating:
+              type: number
+              format: float
+              example: 4.9
+
+    Booking:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        client_id:
+          type: string
+          format: uuid
+        slot_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, paid, cancelled, completed]
+        guest_count:
+          type: integer
+        price_final:
+          type: integer
+          description: Конечная стоимость с учетом всех скидок и доплат.
+        allergies:
+          type: string
+        equipment:
+          type: string
+          enum: [own, rent]
+        created_at:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "ERR_NO_PLACES_LEFT"
+        message:
+          type: string
+          example: "Места закончились"
