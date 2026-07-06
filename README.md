@@ -26,7 +26,7 @@ cooking-studio-summer-school/
 │   └── bug-1-.../         # Исправленные баги (3 шт.)
 ├── 03-testing/            # Тест-кейсы и отчёты
 ├── backend/               # Backend на Go
-└── client/                # Frontend (HTML/CSS/JS)
+└── web-client/                # Frontend (HTML/CSS/JS)
 ```
 
 ## Как запустить
@@ -49,7 +49,7 @@ Backend доступен на `http://127.0.0.1:8080`
 
 ### Frontend
 
-Открыть `client/index.html` в браузере. Backend должен быть запущен.
+Открыть `web-client/index.html` в браузере. Backend должен быть запущен.
 
 ## Выполненные задачи
 
@@ -83,7 +83,7 @@ Backend доступен на `http://127.0.0.1:8080`
 
 ## Инструменты
 
-- **ИИ-ассистент:** Qwen
+- **ИИ-ассистент:** Qwen, Gemini, Google режим ИИ
 - **Среда разработки:** VS Code
 - **Контейнеризация:** Docker
 - **Контроль версий:** Git
