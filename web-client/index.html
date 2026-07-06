@@ -12,6 +12,8 @@
         .header-actions { display: flex; gap: 20px; align-items: center; }
         .header button { background: rgba(255,255,255,0.2); border: 2px solid white; color: white; padding: 10px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.3s; font-weight: 600; }
         .header button:hover { background: white; color: #f5576c; }
+        .user-info { display: flex; align-items: center; gap: 15px; }
+        .user-email { font-size: 14px; opacity: 0.9; }
         .main-container { max-width: 1400px; margin: 40px auto; padding: 0 40px; }
         .screen { display: none; }
         .screen.active { display: block; }
@@ -63,13 +65,16 @@
         .modal-content { background: white; padding: 40px; border-radius: 15px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
         .modal-content h2 { margin-bottom: 25px; color: #333; font-size: 28px; }
         .error-banner { background: #dc3545; color: white; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0; }
+        .success-banner { background: #28a745; color: white; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>🍳 Кулинарная Студия "Шеф-стол"</h1>
         <div class="header-actions">
-            <button onclick="showLoginModal()">🔑 Войти в аккаунт</button>
+            <div id="authSection">
+                <button onclick="showLoginModal()">🔑 Войти в аккаунт</button>
+            </div>
             <button>🔔 1</button>
         </div>
     </div>
@@ -77,7 +82,7 @@
     <div class="main-container">
         <div class="screen active" id="catalogScreen">
             <div class="catalog-header">
-                <h2>📚 Доступные мастер-классы</h2>
+                <h2> Доступные мастер-классы</h2>
                 <p>Выберите мастер-класс для записи (FR-05)</p>
             </div>
             <div id="classesGrid" class="classes-grid">
@@ -92,7 +97,7 @@
                     <h2 id="selectedClassName">Мастер-класс</h2>
                     <p id="selectedClassDescription" style="color: #666; line-height: 1.6; margin-top: 15px;"></p>
                     <div class="booking-summary">
-                        <h3>📋 Детали бронирования</h3>
+                        <h3> Детали бронирования</h3>
                         <div class="summary-item"><span>Мастер-класс:</span><span id="summaryName">-</span></div>
                         <div class="summary-item"><span>Количество мест:</span><span id="summarySeats">1</span></div>
                         <div class="summary-item"><span>Экипировка:</span><span id="summaryEquipment">Своя</span></div>
@@ -163,113 +168,177 @@
     <script>
         const API_BASE_URL = 'http://127.0.0.1:8080';
         let selectedClass = null;
+        let currentUser = null;
         
-        // Загрузка списка мастер-классов с backend
-        async function loadClasses() {
-        const grid = document.getElementById('classesGrid');
-        
-        // Маппинг ID слотов на кулинарные мастер-классы
         const classMapping = {
             '55555555-5555-5555-5555-555555555555': {
                 name: '🍝 Итальянская паста с нуля',
-                description: 'Научитесь готовить настоящую итальянскую пасту ручной работы. Освоите техники замеса теста и создания различных форм.',
+                description: 'Научитесь готовить настоящую итальянскую пасту ручной работы.',
                 emoji: '🍝'
             },
             '66666666-6666-6666-6666-666666666666': {
                 name: '🥐 Французские десерты',
-                description: 'Погрузитесь в мир французской кондитерской школы. Приготовите макаруны, эклеры и крем-брюле.',
+                description: 'Приготовите макаруны, эклеры и крем-брюле.',
                 emoji: '🥐'
             }
-            // Можно добавить больше мастер-классов
         };
         
-        try {
-            const response = await fetch(`${API_BASE_URL}/slots`);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        // Проверка авторизации при загрузке
+        function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            const userEmail = localStorage.getItem('userEmail');
             
-            const data = await response.json();
-            const slots = data.items;
-            
-            grid.innerHTML = '';
-            if (!slots || slots.length === 0) {
-                grid.innerHTML = '<div class="error-banner">Нет доступных мастер-классов</div>';
-                return;
+            if (token && userEmail) {
+                currentUser = { email: userEmail, token: token };
+                updateAuthUI();
             }
+        }
+        
+        // Обновление UI в зависимости от статуса авторизации
+        function updateAuthUI() {
+            const authSection = document.getElementById('authSection');
             
-            slots.forEach(slot => {
-                const hours = Math.floor(slot.route.duration_min / 60);
-                const mins = slot.route.duration_min % 60;
-                const durationStr = hours > 0 ? `${hours} ч ${mins > 0 ? mins + ' мин' : ''}` : `${mins} мин`;
-                
-                // Получаем кулинарные данные из маппинга или используем дефолтные
-                const classData = classMapping[slot.id] || {
-                    name: slot.route.name,
-                    description: `👨‍🍳 Шеф: ${slot.instructor.name}`,
-                    emoji: getEmojiForType(slot.route.type)
-                };
-                
-                const card = document.createElement('div');
-                card.className = 'class-card';
-                card.innerHTML = `
-                    <div class="class-image">${classData.emoji}</div>
-                    <div class="class-content">
-                        <div class="class-title">${classData.name}</div>
-                        <div class="class-description">${classData.description} | 🔥 Свободно мест: ${slot.free_seats}</div>
-                        <div class="class-details">
-                            <div class="class-price">${slot.price} ₽</div>
-                            <div class="class-duration">⏱ ${durationStr}</div>
-                        </div>
-                        <button class="btn-book" onclick="selectClass('${slot.id}', ${JSON.stringify(classData).replace(/'/g, "&apos;")})">Записаться</button>
+            if (currentUser) {
+                authSection.innerHTML = `
+                    <div class="user-info">
+                        <span class="user-email">${currentUser.email}</span>
+                        <button onclick="logout()">🚪 Выйти</button>
                     </div>
                 `;
-                grid.appendChild(card);
-            });
-        } catch (error) {
-            console.error('Ошибка загрузки:', error);
-            grid.innerHTML = `
-                <div class="error-banner">
-                    <h3>❌ Ошибка загрузки данных</h3>
-                    <p>Не удалось загрузить список мастер-классов с сервера.</p>
-                    <button onclick="loadClasses()" style="margin-top: 15px; padding: 10px 20px; background: white; color: #dc3545; border: none; border-radius: 5px; cursor: pointer;">Попробовать снова</button>
-                </div>
-            `;
+            } else {
+                authSection.innerHTML = '<button onclick="showLoginModal()"> Войти в аккаунт</button>';
+            }
         }
-    }
-
-    function getEmojiForType(type) {
-        const emojis = {
-            'novice': '🍝',
-            'experienced': '🥐',
-            'beginner': '🍣',
-            'advanced': '🥩',
-            'default': '🍳'
-        };
-        return emojis[type] || emojis['default'];
-    }
-
-    function selectClass(slotId, classData) {
-        const card = event.target.closest('.class-card');
-        const name = card.querySelector('.class-title').textContent;
-        const description = card.querySelector('.class-description').textContent;
         
-        selectedClass = {
-            id: slotId,
-            name: name,
-            description: description,
-            price: parseInt(card.querySelector('.class-price').textContent.replace(/\D/g, '')),
-            rental_price: 800
-        };
+        // Выход из аккаунта
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userEmail');
+            currentUser = null;
+            updateAuthUI();
+            alert('Вы вышли из аккаунта');
+        }
         
-        document.getElementById('selectedClassName').textContent = selectedClass.name;
-        document.getElementById('selectedClassDescription').textContent = description;
-        document.getElementById('summaryName').textContent = selectedClass.name;
-        document.getElementById('rentalPriceDisplay').textContent = selectedClass.rental_price;
-        
-        showBookingScreen();
-        calculatePrice();
-    }
+        // Авторизация
+        async function login(event) {
+            event.preventDefault();
             
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!validateEmail(email) || !validatePassword(password)) return false;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        throw new Error('Неверный email или пароль');
+                    }
+                    throw new Error(`Ошибка авторизации: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Сохраняем токен и email
+                if (data.token) {
+                    localStorage.setItem('authToken', data.token);
+                    localStorage.setItem('userEmail', email);
+                    currentUser = { email: email, token: data.token };
+                    updateAuthUI();
+                    alert('Вход выполнен успешно!');
+                    closeLoginModal();
+                    return true;
+                } else {
+                    throw new Error('Токен не получен от сервера');
+                }
+                
+            } catch (error) {
+                console.error('Ошибка входа:', error);
+                alert(error.message || 'Не удалось войти. Проверьте email и пароль.');
+                return false;
+            }
+        }
         
+        async function loadClasses() {
+            const grid = document.getElementById('classesGrid');
+            try {
+                const response = await fetch(`${API_BASE_URL}/slots`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                const data = await response.json();
+                const slots = data.items;
+                
+                grid.innerHTML = '';
+                if (!slots || slots.length === 0) {
+                    grid.innerHTML = '<div class="error-banner">Нет доступных мастер-классов</div>';
+                    return;
+                }
+                
+                slots.forEach(slot => {
+                    const hours = Math.floor(slot.route.duration_min / 60);
+                    const mins = slot.route.duration_min % 60;
+                    const durationStr = hours > 0 ? `${hours} ч ${mins > 0 ? mins + ' мин' : ''}` : `${mins} мин`;
+                    
+                    const classData = classMapping[slot.id] || {
+                        name: slot.route.name,
+                        description: `Шеф: ${slot.instructor.name}`,
+                        emoji: '🍳'
+                    };
+                    
+                    const card = document.createElement('div');
+                    card.className = 'class-card';
+                    card.innerHTML = `
+                        <div class="class-image">${classData.emoji}</div>
+                        <div class="class-content">
+                            <div class="class-title">${classData.name}</div>
+                            <div class="class-description">${classData.description} | Свободно мест: ${slot.free_seats}</div>
+                            <div class="class-details">
+                                <div class="class-price">${slot.price} ₽</div>
+                                <div class="class-duration">⏱ ${durationStr}</div>
+                            </div>
+                            <button class="btn-book" onclick="selectClass('${slot.id}')">Записаться</button>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Ошибка загрузки:', error);
+                grid.innerHTML = `
+                    <div class="error-banner">
+                        <h3>Ошибка загрузки данных</h3>
+                        <p>Не удалось загрузить список мастер-классов с сервера.</p>
+                        <button onclick="loadClasses()" style="margin-top: 15px; padding: 10px 20px; background: white; color: #dc3545; border: none; border-radius: 5px; cursor: pointer;">Попробовать снова</button>
+                    </div>
+                `;
+            }
+        }
+        
+        function selectClass(slotId) {
+            const card = event.target.closest('.class-card');
+            const name = card.querySelector('.class-title').textContent;
+            const description = card.querySelector('.class-description').textContent;
+            
+            selectedClass = {
+                id: slotId,
+                name: name,
+                description: description,
+                price: parseInt(card.querySelector('.class-price').textContent.replace(/\D/g, '')),
+                rental_price: 800
+            };
+            
+            document.getElementById('selectedClassName').textContent = selectedClass.name;
+            document.getElementById('selectedClassDescription').textContent = selectedClass.description;
+            document.getElementById('summaryName').textContent = selectedClass.name;
+            document.getElementById('rentalPriceDisplay').textContent = selectedClass.rental_price;
+            
+            showBookingScreen();
+            calculatePrice();
+        }
         
         function showCatalog() {
             document.getElementById('catalogScreen').classList.add('active');
@@ -363,6 +432,13 @@
         async function submitForm(event) {
             event.preventDefault();
             
+            // Проверяем авторизацию
+            if (!currentUser || !currentUser.token) {
+                alert('Требуется авторизация. Войдите в аккаунт для создания брони.');
+                showLoginModal();
+                return false;
+            }
+            
             const seatsValid = validateSeats();
             const allergiesValid = validateAllergies();
             
@@ -385,32 +461,41 @@
             try {
                 const response = await fetch(`${API_BASE_URL}/bookings`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${currentUser.token}`
+                    },
                     body: JSON.stringify(bookingData)
                 });
+                
+                if (response.status === 401) {
+                    alert('Сессия истекла. Войдите снова.');
+                    logout();
+                    showLoginModal();
+                    return false;
+                }
+                
+                if (response.status === 409) {
+                    alert('Нет свободных мест на этот мастер-класс. Выберите другое время.');
+                    return false;
+                }
+                
+                if (response.status === 410) {
+                    alert('Мастер-класс отменён. Выберите другое время.');
+                    return false;
+                }
                 
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 
                 alert('Бронь успешно подтверждена!');
                 showCatalog();
                 return true;
+                
             } catch (error) {
                 console.error('Ошибка создания брони:', error);
                 alert('Не удалось создать бронь. Проверьте консоль или попробуйте позже.');
                 return false;
             }
-        }
-        
-        function login(event) {
-            event.preventDefault();
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            
-            if (!validateEmail(email) || !validatePassword(password)) return false;
-            
-            alert('Вход выполнен успешно!');
-            closeLoginModal();
-            return true;
         }
         
         function cancelBooking() {
@@ -425,6 +510,7 @@
         function closeLoginModal() { document.getElementById('loginModal').classList.remove('show'); }
         
         window.onload = function() {
+            checkAuth();
             loadClasses();
         };
     </script>
