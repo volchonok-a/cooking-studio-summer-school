@@ -1,22 +1,94 @@
-# Cancellation and Penalty Rules
+# LOGIC-004: Отмена брони (правило 12 часов)
 
-## Overview
-Defines the business logic for booking cancellations and the application of user-blocking penalties.
+**ID:** LOGIC-004
 
-## Logic Flow
-1. **Request:** User triggers a cancellation from `SCR-006`.
-2. **Pre-check:** System calls `GET /bookings/{id}/cancellation-check` to verify the time remaining until the class start.
-3. **Threshold Calculation:**
-   - **Early Cancellation (>= 12h):** No penalty applied.
-   - **Late Cancellation (< 12h):** Penalty triggered.
-4. **Action:** If confirmed, the system executes `DELETE /bookings/{id}`.
+**Тип:** Техническая логика
 
-## Technical Details
-- **Penalty Logic:** A Late Cancellation leads to a 7-day account ban.
-- **Idempotency:** Cancellation requests must use the `Idempotency-Key` header to ensure safe retries.
+**Домен:** 04. Управление бронированиями
 
-## Related Screens
-- SCR-006 (My Bookings), SCR-007 (Cancellation Confirmation).
+**Приоритет:** High
 
-## Links
-- FR-19, FR-20, FR-29.
+**Статус:** Актуален
+
+---
+
+## Описание
+Алгоритм определения типа отмены (ранняя/поздняя) и применения соответствующих последствий (блокировка или без неё).
+
+### Цель
+Снизить no-show и поздние отмены, которые приводят к простою мест.
+
+### Контекст использования
+SCR-006 (Мои бронирования), SCR-007 (Отмена брони).
+
+---
+
+## Шаги выполнения
+
+### Шаг 0: Инициация отмены
+- Клиент нажимает «Отменить» на карточке брони в SCR-006.
+- Frontend отправляет проверочный запрос:
+- GET /bookings/{id}/cancellation-check
+
+
+### Шаг 1: Проверка времени до старта
+- Бэкенд вычисляет разницу: `delta = datetime_from - now`.
+- Возвращает:
+  ```json
+  {
+    "penalty": true/false,
+    "block_duration_days": 7,
+    "message": "..."
+  }
+  ```
+
+### Шаг 2: Ветвление логики
+
+**Если `delta ≥ 12 часов`** (ранняя отмена):
+- `penalty = false`
+- Показать модалку с текстом: «Вы уверены, что хотите отменить бронь? Место будет освобождено.»
+- При подтверждении → `DELETE /bookings/{id}` → место освобождается.
+
+**Если `delta < 12 часов`** (поздняя отмена):
+- `penalty = true`
+- Показать модалку с предупреждением: «Отмена менее чем за 12 часов приведёт к блокировке на 7 дней. Вы не сможете записываться на классы до <дата>.»
+- При подтверждении → `DELETE /bookings/{id}` → **активируется блокировка на 7 дней** (FR-20).
+
+### Шаг 3: Обновление состояния
+- Бронь переходит в статус `cancelled`.
+- Если была блокировка → клиент получает push-уведомление (FR-26).
+- Список в SCR-006 обновляется.
+
+---
+
+## Бизнес-правила
+
+- Граница «ранней» отмены — **ровно 12 часов** до старта.
+- Решение о типе отмены принимает **сервер** (клиент не может подделать время).
+- При поздней отмене — блокировка на 7 дней (FR-20, FR-29).
+- При ранней отмене — блокировки нет (FR-21).
+
+---
+
+## Связи
+
+### Функциональные требования (FR)
+
+| ID | Название |
+|----|----------|
+| FR-19 | Отмена брони |
+| FR-20 | Поздняя отмена → блокировка 7 дней |
+| FR-21 | Ранняя отмена без блокировки |
+
+### Связанные экраны (SCR)
+
+| ID | Название |
+|----|----------|
+| SCR-006 | Мои бронирования |
+| SCR-007 | Отмена брони |
+
+### Связанные бизнес-сценарии (BS)
+
+| ID | Название |
+|----|----------|
+| BS-004 | Блокировка клиента |

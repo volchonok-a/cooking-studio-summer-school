@@ -1,13 +1,96 @@
-# Auth Flow
+# LOGIC-001: Авторизация (Email + OAuth)
 
-## Overview
-Describes the user authentication process and session management.
+**ID:** LOGIC-001
 
-## Logic Flow
-1. **Login:** User submits credentials via `SCR-001`.
-2. **Session:** The backend issues `HttpOnly`, `Secure`, and `SameSite=Strict` cookies to prevent XSS attacks.
-3. **Storage:** No tokens are stored in `localStorage` or `sessionStorage`[cite: 22].
-4. **Fallback:** If OAuth (Google/Yandex) is unavailable, the system defaults to Email+Password authentication[cite: 25].
+**Тип:** Техническая логика
 
-## Links
-- FR-01, FR-02, NFR-14.
+**Домен:** 01. Авторизация
+
+**Приоритет:** Critical
+
+**Статус:** Актуален
+
+---
+
+## Описание
+Алгоритм аутентификации клиента через Email+пароль или OAuth-провайдеров (Google, Яндекс) с fallback-механизмом и безопасным хранением токенов.
+
+### Цель
+Обеспечить безопасный и быстрый вход с резервным способом авторизации на случай недоступности OAuth.
+
+### Контекст использования
+SCR-001 (Регистрация и авторизация).
+
+---
+
+## Шаги выполнения
+
+### Шаг 0: Инициализация
+- Проверить наличие валидного `accessToken` в httpOnly cookie.
+- Если токен есть и не истёк → редирект на SCR-002.
+- Если токена нет → показать SCR-001.
+
+### Шаг 1: Авторизация по Email + пароль (FR-01)
+1. Клиент вводит Email и пароль.
+2. Frontend валидирует формат (regex для email, длина пароля ≥ 6).
+3. Отправляется запрос:
+- POST /auth/login
+- Body: { email, password }
+
+4. Успех (200):
+   - Бэкенд устанавливает `accessToken` и `refreshToken` в httpOnly cookies (NFR-14).
+   - Frontend сохраняет объект `Client` в кэш.
+   - Переход на SCR-002.
+   - Запуск модалки запроса push-разрешения (FR-03).
+5. Ошибка (401):
+   - Показать inline-ошибку «Неверный Email или пароль».
+   - Очистить поля, фокус на Email.
+
+### Шаг 2: OAuth авторизация (FR-02)
+1. Клиент нажимает «Войти через Google/Яндекс».
+2. Frontend перенаправляет на OAuth-провайдер.
+3. После успешной авторизации провайдер возвращает callback с кодом.
+4. Frontend обменивает код на токен через backend.
+5. Бэкенд устанавливает httpOnly cookies.
+6. Переход на SCR-002.
+
+### Шаг 3: Fallback при недоступности OAuth (NFR-10)
+- Если OAuth-провайдер не отвечает в течение 5 секунд → toast «Сервис временно недоступен, попробуйте Email + пароль».
+- Кнопка OAuth переходит в состояние `disabled`.
+- Форма Email+пароль остаётся активной.
+
+### Шаг 4: Запрос push-разрешения (FR-03)
+- После успешного входа показать модалку «Разрешить уведомления?».
+- При согласии → `Notification.requestPermission()` → регистрация push-токена (см. LOGIC-007).
+
+---
+
+## Бизнес-правила
+- SMS-авторизация в MVP не поддерживается.
+- Токены хранятся **только** в httpOnly cookies (NFR-14) — защита от XSS.
+- Время первого входа p95 < 3.0 с (NFR-3).
+- Все строки вынесены в i18n (NFR-20).
+
+---
+
+## Связи
+
+### Функциональные требования (FR)
+| ID | Название |
+|----|----------|
+| FR-01 | Вход по Email + пароль |
+| FR-02 | OAuth: Google, Яндекс |
+| FR-03 | Запрос разрешения на push |
+
+### Нефункциональные требования (NFR)
+| ID | Название |
+|----|----------|
+| NFR-3 | Время первого входа p95 < 3.0 с |
+| NFR-10 | OAuth fallback |
+| NFR-14 | Токены в httpOnly cookies |
+| NFR-19 | WCAG 2.1 AA |
+
+### Связанные экраны (SCR)
+| ID | Название |
+|----|----------|
+| SCR-001 | Регистрация и авторизация |

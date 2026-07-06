@@ -1,14 +1,104 @@
-# Push Notifications Flow
+# LOGIC-007: Запрос разрешения на Push-уведомления
 
-## Overview
-Describes the Web Push API integration for client alerts[cite: 22].
+**ID:** LOGIC-007
 
-## Logic Flow
-1. **Request:** Upon first login, the system prompts the user to grant push notification permissions[cite: 22].
-2. **Types:**
-   - **Important:** Class cancellations or account blocking[cite: 22].
-   - **General:** Reminders (~24h before class) or unblocking notices[cite: 22].
-3. **Fallback:** If permissions are denied, notifications are accessible only via the "Bell" icon on `SCR-010`[cite: 22].
+**Тип:** Техническая логика
 
-## Links
-- FR-25, FR-26, FR-27, NFR-16.
+**Домен:** 06. Уведомления
+
+**Приоритет:** Medium
+
+**Статус:** Актуален
+
+---
+
+## Описание
+Алгоритм запроса системного разрешения на Web Push API и регистрации push-токена на бэкенде.
+
+### Цель
+Получить разрешение пользователя на отправку push-уведомлений для напоминаний и важных событий.
+
+### Контекст использования
+SCR-001 (после входа), SCR-010 (колокольчик).
+
+---
+
+## Шаги выполнения
+
+### Шаг 0: Триггер запроса
+- Первый вход в приложение.
+- ИЛИ первая попытка бронирования (если разрешение ещё не запрошено).
+
+### Шаг 1: Показ модалки-объяснения
+- Frontend показывает модалку:
+  - Заголовок: «Разрешить уведомления?»
+  - Текст: «Мы будем напоминать о классах и важных изменениях».
+  - Кнопки: «Разрешить» / «Не сейчас».
+
+### Шаг 2: Запрос системного разрешения
+- При клике на «Разрешить»:
+  ```javascript
+  const permission = await Notification.requestPermission();
+  ```
+
+- **Возможные ответы:**
+- granted → переход к шагу 3.
+- denied → push работать не будет, только in-app (колокольчик).
+- default → пользователь закрыл системный диалог.
+
+### Шаг 3: Регистрация push-токена
+- Получить Service Worker registration.
+- Подписаться на push:
+
+  ```javascript
+  const subscription = await swRegistration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: VAPID_PUBLIC_KEY
+  });
+  ```
+
+  - Отправить subscription на бэкенд:
+
+  POST /push-tokens
+
+  Body: { subscription }
+
+  ### Шаг 4: Обработка отзыва разрешения
+- Если пользователь отозвал разрешение в настройках браузера → бэкенд перестаёт отправлять push без ошибки для клиента.
+- Уведомления продолжают работать in-app (колокольчик).
+
+---
+
+## Бизнес-правила
+
+- Только Web Push API + in-app (SMS/Email вне MVP, NFR-16).
+- Push-токен регистрируется после получения системного разрешения (NFR-15).
+- При отказе — уведомления работают только через колокольчик.
+- Модалка объясняет, зачем нужны уведомления (UX-требование).
+
+---
+
+## Связи
+
+### Функциональные требования (FR)
+
+| ID | Название |
+|----|----------|
+| FR-03 | Запрос разрешения на push |
+| FR-25 | Напоминание за ~24 часа |
+| FR-26 | Push при отмене студией |
+| FR-27 | Запрос разрешения на push |
+
+### Нефункциональные требования (NFR)
+
+| ID | Название |
+|----|----------|
+| NFR-15 | Push-токен регистрируется после разрешения |
+| NFR-16 | Только Web Push + in-app |
+
+### Связанные экраны (SCR)
+
+| ID | Название |
+|----|----------|
+| SCR-001 | Регистрация и авторизация |
+| SCR-010 | Уведомления |
