@@ -5,307 +5,428 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Кулинарная Студия "Шеф-стол"</title>
     <style>
-        :root {
-            --bg-color: #fffaf5;
-            --card-bg: #ffffff;
-            --text-color: #4a2c11;
-            --accent-color: #e05a47;
-            --accent-hover: #c44736;
-        }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-        }
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto 30px auto;
-            border-bottom: 2px solid var(--accent-color);
-            padding-bottom: 15px;
-        }
-        h1 { margin: 0; color: var(--accent-color); }
-        .controls { display: flex; gap: 20px; align-items: center; }
-        .bell-icon { font-size: 22px; cursor: pointer; position: relative; }
-        .badge { position: absolute; top: -5px; right: -5px; background: red; color: white; font-size: 10px; padding: 2px 5px; border-radius: 50%; }
-        input, button, select, textarea {
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-        }
-        button { background-color: var(--accent-color); color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: var(--accent-hover); }
-        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 25px; max-width: 1200px; margin: 0 auto; }
-        .card { background-color: var(--card-bg); border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid rgba(224,90,71,0.1); }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
-        .modal-content { background: #fff; padding: 30px; border-radius: 12px; width: 90%; max-width: 450px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .header h1 { font-size: 32px; }
+        .header-actions { display: flex; gap: 20px; align-items: center; }
+        .header button { background: rgba(255,255,255,0.2); border: 2px solid white; color: white; padding: 10px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; transition: all 0.3s; font-weight: 600; }
+        .header button:hover { background: white; color: #f5576c; }
+        .main-container { max-width: 1400px; margin: 40px auto; padding: 0 40px; }
+        .screen { display: none; }
+        .screen.active { display: block; }
+        .catalog-header { background: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .catalog-header h2 { color: #333; font-size: 28px; margin-bottom: 10px; }
+        .catalog-header p { color: #666; font-size: 16px; }
+        .classes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 30px; margin-bottom: 40px; }
+        .class-card { background: white; border-radius: 15px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transition: transform 0.3s, box-shadow 0.3s; cursor: pointer; }
+        .class-card:hover { transform: translateY(-5px); box-shadow: 0 15px 40px rgba(0,0,0,0.3); }
+        .class-image { width: 100%; height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; font-size: 80px; }
+        .class-content { padding: 25px; }
+        .class-title { font-size: 22px; font-weight: bold; color: #333; margin-bottom: 10px; }
+        .class-description { color: #666; font-size: 14px; line-height: 1.6; margin-bottom: 15px; }
+        .class-details { display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid #e9ecef; }
+        .class-price { font-size: 24px; font-weight: bold; color: #667eea; }
+        .class-duration { color: #999; font-size: 14px; }
+        .btn-book { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 25px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; margin-top: 15px; width: 100%; }
+        .btn-book:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .booking-container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; background: white; border-radius: 15px; padding: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .booking-info { padding-right: 40px; border-right: 2px solid #e9ecef; }
+        .booking-info h2 { color: #333; font-size: 28px; margin-bottom: 20px; }
+        .booking-summary { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-top: 20px; }
+        .booking-summary h3 { color: #333; margin-bottom: 15px; }
+        .summary-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e9ecef; }
+        .summary-item:last-child { border-bottom: none; font-weight: bold; font-size: 18px; color: #667eea; }
+        .booking-form { padding-left: 40px; }
+        .form-group { margin-bottom: 25px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: 16px; }
+        .form-group input[type="number"], .form-group input[type="email"], .form-group input[type="password"], .form-group textarea { width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 16px; transition: border-color 0.3s; }
+        .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #667eea; }
+        .radio-group { display: flex; gap: 30px; margin-top: 10px; }
+        .radio-option { display: flex; align-items: center; gap: 10px; padding: 15px; border: 2px solid #e9ecef; border-radius: 8px; cursor: pointer; transition: all 0.3s; flex: 1; }
+        .radio-option:hover { border-color: #667eea; background: #f8f9fa; }
+        .radio-option input[type="radio"] { width: 20px; height: 20px; cursor: pointer; }
+        .radio-option label { cursor: pointer; margin: 0; font-weight: normal; }
+        .price-display { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px; text-align: center; font-size: 32px; font-weight: bold; color: white; margin: 30px 0; box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3); }
+        .error-message { color: #dc3545; font-size: 14px; margin-top: 5px; display: none; }
+        .error-message.show { display: block; }
+        .button-group { display: flex; gap: 15px; margin-top: 30px; }
+        .btn { flex: 1; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+        .btn-secondary { background: #e9ecef; color: #495057; }
+        .btn-secondary:hover { background: #dee2e6; }
+        .btn-back { background: none; border: 2px solid #667eea; color: #667eea; padding: 10px 20px; border-radius: 8px; font-size: 16px; cursor: pointer; margin-bottom: 20px; transition: all 0.3s; }
+        .btn-back:hover { background: #667eea; color: white; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal.show { display: flex; }
+        .modal-content { background: white; padding: 40px; border-radius: 15px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal-content h2 { margin-bottom: 25px; color: #333; font-size: 28px; }
+        .error-banner { background: #dc3545; color: white; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0; }
     </style>
 </head>
 <body>
-
-    <header>
+    <div class="header">
         <h1>🍳 Кулинарная Студия "Шеф-стол"</h1>
-        <div class="controls">
-            <!-- ДИНАМИЧЕСКИЙ БЛОК ПРОФИЛЯ (FR-01 / FR-03) -->
-            <div id="authBlock">
-                <button onclick="openAuthModal()">🔑 Войти в аккаунт</button>
-            </div>
-            
-            <!-- In-app уведомления (FR-28) -->
-            <div class="bell-icon" onclick="alert('Уведомления: Вы успешно записаны на класс!')">
-                🔔 <span class="badge">1</span>
-            </div>
-        </div>
-    </header>
-
-    <main class="grid" id="catalog-grid">
-        <div class="card"><h3>Загрузка расписания классов (FR-05)...</h3></div>
-    </main>
-
-    <!-- Окно авторизации (UC-1) -->
-    <div class="modal" id="authModal">
-        <div class="modal-content" style="max-width: 350px;">
-            <h3 style="color: var(--accent-color); margin-top:0;">Вход в личный кабинет</h3>
-            <form id="authForm" onsubmit="handleAuth(event)">
-                <div style="margin-bottom: 12px;">
-                    <label>Email:</label><br>
-                    <input type="email" id="authEmail" style="width:100%; box-sizing:border-box; margin-top:5px;" required>
-                </div>
-                <div style="margin-bottom: 15px;">
-                    <label>Пароль:</label><br>
-                    <input type="password" id="authPassword" style="width:100%; box-sizing:border-box; margin-top:5px;" required>
-                </div>
-                <div style="display:flex; gap:10px; justify-content: flex-end;">
-                    <button type="button" style="background:#ccc; color:#000;" onclick="closeAuthModal()">Отмена</button>
-                    <button type="submit">Войти</button>
-                </div>
-            </form>
+        <div class="header-actions">
+            <button onclick="showLoginModal()">🔑 Войти в аккаунт</button>
+            <button>🔔 1</button>
         </div>
     </div>
-
-    <!-- Модальное окно бронирования (UC-6) -->
-    <div class="modal" id="bookingModal">
-        <div class="modal-content">
-            <h3 style="color: var(--accent-color); margin-top:0;">Запись на мастер-класс</h3>
-            <form id="bookingForm" onsubmit="submitBooking(event)">
-                <input type="hidden" id="slotId">
-                
-                <div style="margin-bottom: 12px;">
-                    <label>Количество мест (FR-13):</label><br>
-                    <input type="number" id="guestCount" value="1" min="1" max="12" style="width:100%; box-sizing:border-box; margin-top:5px;" oninput="calculateTotal()">
-                </div>
-
-                <div style="margin-bottom: 12px;">
-                    <!-- Выбор экипировки напрокат (FR-10 / FR-11) -->
-                    <label>Экипировка студии:</label><br>
-                    <select id="equipmentSelect" style="width:100%; margin-top:5px;" onchange="calculateTotal()">
-                        <option value="own">Своя экипировка (бесплатно)</option>
-                        <option value="rent">Прокат (фартук + ножи) (+500 ₽/набор)</option>
-                    </select>
-                </div>
-
-                <div style="margin-bottom: 12px;">
-                    <!-- Обязательное поле аллергий (FR-12) -->
-                    <label>Аллергии и особенности питания (Обязательно):</label><br>
-                    <textarea id="allergiesInput" placeholder="Если нет, напишите 'Нет'" style="width:100%; margin-top:5px; box-sizing:border-box;" oninput="validateAllergies()" required></textarea>
-                </div>
-
-                <!-- Динамический расчет чека с учетом текущей скидки (FR-14 / FR-16) -->
-                <div id="totalPricePreview" style="background:#fcf0ee; padding:12px; border-radius:6px; font-size:14px; font-weight:bold; margin-bottom:15px; color:var(--accent-color);">
-                    Расчет стоимости...
-                </div>
-
-                <div style="font-size:12px; opacity:0.8; margin-bottom:15px;">💵 Оплата на месте (наличные / перевод на карту) (FR-15)</div>
-
-                <div style="display:flex; gap:10px; justify-content: flex-end;">
-                    <button type="button" style="background:#ccc; color:#000;" onclick="closeModal()">Отмена</button>
-                    <button type="submit" id="submitBtn">Подтвердить бронь</button>
-                </div>
-            </form>
+    
+    <div class="main-container">
+        <div class="screen active" id="catalogScreen">
+            <div class="catalog-header">
+                <h2>📚 Доступные мастер-классы</h2>
+                <p>Выберите мастер-класс для записи (FR-05)</p>
+            </div>
+            <div id="classesGrid" class="classes-grid">
+                <div style="text-align: center; padding: 60px; color: white; font-size: 20px;">Загрузка расписания...</div>
+            </div>
         </div>
-    </div>
-
-    <script>
-        let allSlots = [];
-        let currentPrice = 0;
-        let currentUser = null; // Текущий авторизованный пользователь
-        let isLoyalClient = false; // Автоматический флаг скидки 5%
-
-        const API_URL = 'http://localhost:8080';
-
-        // НАСТОЯЩАЯ АВТОРИЗАЦИЯ И АВТОМАТИЧЕСКИЙ РАСЧЕТ ЛОЯЛЬНОСТИ (UC-1 / UC-2)
-        async function handleAuth(event) {
-            event.preventDefault();
-            const email = document.getElementById('authEmail').value;
-            const password = document.getElementById('authPassword').value;
-
-            try {
-                // Честный POST-запрос авторизации на бэкенд в Docker
-                const response = await fetch(`${API_URL}/auth/session`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, password: password })
-                });
-
-                // Если email содержит "loyal", симулируем постоянного клиента (>5 классов), иначе — нового
-                currentUser = { email: email, visited_classes: email.includes('loyal') ? 6 : 2 };
-                applyUserSession();
-                closeAuthModal();
-            } catch (error) {
-                // Режим автономной презентации фронтенда при строгих политиках CORS браузера
-                currentUser = { email: email, visited_classes: email.includes('loyal') ? 6 : 2 };
-                applyUserSession();
-                closeAuthModal();
-            }
-        }
-
-        // Проверка количества посещений и включение скидки (FR-04 / FR-16)
-        function applyUserSession() {
-            if (!currentUser) return;
-            
-            // Автоматический триггер: если классов > 5, включается скидка (FR-16)
-            isLoyalClient = currentUser.visited_classes > 5;
-            
-            const authBlock = document.getElementById('authBlock');
-            authBlock.innerHTML = `
-                <div style="font-size:13px; text-align:right;">
-                    <div>👤 <b>${currentUser.email}</b></div>
-                    <div style="font-size:11px; margin-top:2px; color:${isLoyalClient ? 'green' : '#666'}">
-                        ${isLoyalClient ? `🔥 Постоянный клиент (Классов: ${currentUser.visited_classes}, Скидка 5%)` : `🌱 Классов посещено: ${currentUser.visited_classes}`}
+        
+        <div class="screen" id="bookingScreen">
+            <button class="btn-back" onclick="showCatalog()">← Назад к списку</button>
+            <div class="booking-container">
+                <div class="booking-info">
+                    <h2 id="selectedClassName">Мастер-класс</h2>
+                    <p id="selectedClassDescription" style="color: #666; line-height: 1.6; margin-top: 15px;"></p>
+                    <div class="booking-summary">
+                        <h3>📋 Детали бронирования</h3>
+                        <div class="summary-item"><span>Мастер-класс:</span><span id="summaryName">-</span></div>
+                        <div class="summary-item"><span>Количество мест:</span><span id="summarySeats">1</span></div>
+                        <div class="summary-item"><span>Экипировка:</span><span id="summaryEquipment">Своя</span></div>
+                        <div class="summary-item"><span>Итого:</span><span id="summaryTotal">0 ₽</span></div>
                     </div>
-                    <a href="#" onclick="handleLogout()" style="font-size:11px; color:red; text-decoration:none; margin-top:3px; display:inline-block;">Выйти</a>
                 </div>
-            `;
-            if (document.getElementById('bookingModal').style.display === 'flex') calculateTotal();
-        }
-
-        function handleLogout() {
-            currentUser = null;
-            isLoyalClient = false;
-            document.getElementById('authBlock').innerHTML = `<button onclick="openAuthModal()">🔑 Войти в аккаунт</button>`;
-            if (document.getElementById('bookingModal').style.display === 'flex') calculateTotal();
-        }
-
-        // ЖИВОЙ СЕТЕВОЙ ЗАПРОС К API СЛОТОВ (ИСПРАВЛЕНИЕ БАГА №2 / FR-05)
-        async function loadCatalog() {
-            try {
-                const response = await fetch(`${API_URL}/slots`);
-                if (!response.ok) throw new Error('Ошибка сервера');
-                const data = await response.json();
-                allSlots = data.items || [];
-                renderCatalog(allSlots);
-            } catch (error) {
-                // Сетевой фоллбек на каноничную структуру СУБД для демонстрации интерфейса
-                allSlots = [
-                    { "id": "55555555-5555-5555-5555-555555555555", "price": 2500, "free_seats": 8, "instructor": { "name": "Мария" }, "route": { "duration_min": 180, "name": "Острова и каналы" }, "start_at": "2030-06-01T18:00:00Z" },
-                    { "id": "66666666-6666-6666-6666-666666666666", "price": 3200, "free_seats": 0, "instructor": { "name": "Алексей" }, "route": { "duration_min": 180, "name": "Большая вода" }, "start_at": "2030-06-02T18:00:00Z" }
-                ];
-                renderCatalog(allSlots);
+                <div class="booking-form">
+                    <form id="bookingForm" onsubmit="return submitForm(event)">
+                        <div class="form-group">
+                            <label for="seats">Количество мест (FR-13):</label>
+                            <input type="number" id="seats" name="seats" min="1" max="12" value="1" onchange="calculatePrice()" oninput="validateSeats()">
+                            <div class="error-message" id="seatsError">Доступно от 1 до 12 мест</div>
+                        </div>
+                        <div class="form-group">
+                            <label>Экипировка студии:</label>
+                            <div class="radio-group">
+                                <div class="radio-option">
+                                    <input type="radio" id="equipmentOwn" name="equipment" value="own" checked onchange="calculatePrice()">
+                                    <label for="equipmentOwn">Своя экипировка (бесплатно)</label>
+                                </div>
+                                <div class="radio-option">
+                                    <input type="radio" id="equipmentRental" name="equipment" value="rental" onchange="calculatePrice()">
+                                    <label for="equipmentRental">Прокат (+<span id="rentalPriceDisplay">800</span> ₽/набор)</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="allergies">Аллергии и особенности питания (Обязательно):</label>
+                            <textarea id="allergies" name="allergies" rows="4" placeholder="Укажите аллергии или напишите 'Нет'"></textarea>
+                            <div class="error-message" id="allergiesError">Пожалуйста, укажите аллергии или напишите 'Нет'</div>
+                        </div>
+                        <div class="price-display" id="priceDisplay">Расчет стоимости: 0 ₽</div>
+                        <div class="form-group">
+                            <label>💵 Оплата на месте (наличные / перевод на карту) (FR-15)</label>
+                        </div>
+                        <div class="button-group">
+                            <button type="button" class="btn btn-secondary" onclick="cancelBooking()">Отмена</button>
+                            <button type="submit" class="btn btn-primary">Подтвердить бронь</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal" id="loginModal">
+        <div class="modal-content">
+            <h2>Вход в личный кабинет</h2>
+            <form onsubmit="return login(event)">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" name="email" required>
+                    <div class="error-message" id="emailError">Введите корректный email</div>
+                </div>
+                <div class="form-group">
+                    <label for="password">Пароль:</label>
+                    <input type="password" id="password" name="password" required minlength="6">
+                    <div class="error-message" id="passwordError">Пароль должен быть не менее 6 символов</div>
+                </div>
+                <div class="button-group">
+                    <button type="button" class="btn btn-secondary" onclick="closeLoginModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Войти</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:8080';
+        let selectedClass = null;
+        
+        // Загрузка списка мастер-классов с backend
+        async function loadClasses() {
+        const grid = document.getElementById('classesGrid');
+        
+        // Маппинг ID слотов на кулинарные мастер-классы
+        const classMapping = {
+            '55555555-5555-5555-5555-555555555555': {
+                name: '🍝 Итальянская паста с нуля',
+                description: 'Научитесь готовить настоящую итальянскую пасту ручной работы. Освоите техники замеса теста и создания различных форм.',
+                emoji: '🍝'
+            },
+            '66666666-6666-6666-6666-666666666666': {
+                name: '🥐 Французские десерты',
+                description: 'Погрузитесь в мир французской кондитерской школы. Приготовите макаруны, эклеры и крем-брюле.',
+                emoji: '🥐'
             }
-        }
-
-        // РЕНДЕРИНГ КАРТОЧЕК СТУДИИ "ШЕФ-СТОЛ"
-        function renderCatalog(slots) {
-            const grid = document.getElementById('catalog-grid');
-            grid.innerHTML = slots.map(slot => {
-                let className = slot.route.name === "Острова и каналы" ? "🍝 Итальянская кухня для новичков" : "🥩 Продвинутый мясной класс";
-                const classDate = new Date(slot.start_at).toLocaleString('ru-RU', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const isSoldOut = slot.free_seats === 0;
-
-                return `
-                    <div class="card">
-                        <h3>${className}</h3>
-                        <div style="margin: 10px 0; font-weight: bold; color: var(--accent-color);">📅 Расписание: ${classDate}</div>
-                        <div style="font-size: 13px; opacity: 0.8; margin-bottom:5px;">🧑‍🍳 Шеф-повар: ${slot.instructor.name}</div>
-                        <div style="font-size: 13px; opacity: 0.8; margin-bottom:5px;">⏱️ Длительность: ~3 часа (FR-07)</div>
-                        <div style="font-size: 15px; font-weight: bold; margin: 10px 0;">💰 Базовая цена: ${slot.price} ₽</div>
-                        <div style="margin-bottom: 15px; font-size:13px; font-weight:bold; color:${isSoldOut ? 'red' : 'green'};">🪑 Свободно мест: ${isSoldOut ? 'Все билеты проданы!' : slot.free_seats}</div>
-                        
-                        <!-- БАГ №3: Блокировка вызова формы, если свободных мест нет (FR-07) -->
-                        <button onclick="openBooking('${slot.id}', ${slot.price})" ${isSoldOut ? 'disabled style="background:#ccc; cursor:not-allowed;"' : ''}>
-                            ${isSoldOut ? 'Мест нет' : 'Записаться'}
-                        </button>
+            // Можно добавить больше мастер-классов
+        };
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/slots`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+            
+            const data = await response.json();
+            const slots = data.items;
+            
+            grid.innerHTML = '';
+            if (!slots || slots.length === 0) {
+                grid.innerHTML = '<div class="error-banner">Нет доступных мастер-классов</div>';
+                return;
+            }
+            
+            slots.forEach(slot => {
+                const hours = Math.floor(slot.route.duration_min / 60);
+                const mins = slot.route.duration_min % 60;
+                const durationStr = hours > 0 ? `${hours} ч ${mins > 0 ? mins + ' мин' : ''}` : `${mins} мин`;
+                
+                // Получаем кулинарные данные из маппинга или используем дефолтные
+                const classData = classMapping[slot.id] || {
+                    name: slot.route.name,
+                    description: `👨‍🍳 Шеф: ${slot.instructor.name}`,
+                    emoji: getEmojiForType(slot.route.type)
+                };
+                
+                const card = document.createElement('div');
+                card.className = 'class-card';
+                card.innerHTML = `
+                    <div class="class-image">${classData.emoji}</div>
+                    <div class="class-content">
+                        <div class="class-title">${classData.name}</div>
+                        <div class="class-description">${classData.description} | 🔥 Свободно мест: ${slot.free_seats}</div>
+                        <div class="class-details">
+                            <div class="class-price">${slot.price} ₽</div>
+                            <div class="class-duration">⏱ ${durationStr}</div>
+                        </div>
+                        <button class="btn-book" onclick="selectClass('${slot.id}', ${JSON.stringify(classData).replace(/'/g, "&apos;")})">Записаться</button>
                     </div>
                 `;
-            }).join('');
-        }
-
-        function openBooking(slotId, price) {
-            // Ограничение Бриф-Скоупа: Запись доступна только авторизованным (FR-09)
-            if (!currentUser) {
-                alert("Ошибка: Для создания бронирования необходимо войти в аккаунт! (FR-09)");
-                openAuthModal();
-                return;
-            }
-            document.getElementById('slotId').value = slotId;
-            currentPrice = price;
-            document.getElementById('guestCount').value = 1;
-            document.getElementById('equipmentSelect').value = 'own';
-            document.getElementById('allergiesInput').value = '';
-            document.getElementById('bookingModal').style.display = 'flex';
-            calculateTotal();
-            validateAllergies();
-        }
-
-        // АВТОМАТИЧЕСКИЙ РАСЧЕТ ЧЕКА С УЧЕТОМ СКИДКИ АВТОРИЗАЦИИ (FR-14) - ФИЧА №1
-        function calculateTotal() {
-            const seats = parseInt(document.getElementById('guestCount').value) || 1;
-            const equip = document.getElementById('equipmentSelect').value;
-            
-            // БАГ №2: Валидация на отрицательное число гостей в форме калькулятора
-            if (seats < 1) {
-                document.getElementById('totalPricePreview').innerText = "Ошибка: минимум 1 гость";
-                return;
-            }
-            
-            const baseTotal = currentPrice * seats;
-            const rentCost = equip === 'rent' ? 500 * seats : 0; // Расчет прокат-фонда (FR-11)
-            const discount = isLoyalClient ? (baseTotal * 0.05) : 0; // Скидка лояльности подтягивается автоматически (FR-16)
-            const finalTotal = baseTotal + rentCost - discount;
-
-            document.getElementById('totalPricePreview').innerHTML = `
-                Базовая цена: ${baseTotal} ₽<br>
-                ${rentCost > 0 ? `Прокат экипировки: +${rentCost} ₽<br>` : ''}
-                ${discount > 0 ? `Скидка постоянного клиента 5%: -${discount} ₽<br>` : ''}
-                <hr style="border:0; border-top:1px solid #ccc; margin:5px 0;">
-                Итого к оплате на месте: ${finalTotal} ₽
+                grid.appendChild(card);
+            });
+        } catch (error) {
+            console.error('Ошибка загрузки:', error);
+            grid.innerHTML = `
+                <div class="error-banner">
+                    <h3>❌ Ошибка загрузки данных</h3>
+                    <p>Не удалось загрузить список мастер-классов с сервера.</p>
+                    <button onclick="loadClasses()" style="margin-top: 15px; padding: 10px 20px; background: white; color: #dc3545; border: none; border-radius: 5px; cursor: pointer;">Попробовать снова</button>
+                </div>
             `;
         }
+    }
 
-        // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ БАГА №1 (Обязательность поля аллергий по FR-12) - ФИЧА №2
-        function validateAllergies() {
-            const input = document.getElementById('allergiesInput').value.trim();
-            const btn = document.getElementById('submitBtn');
-            if (input === "") {
-                btn.disabled = true;
-                btn.style.background = "#ccc";
-                btn.style.cursor = "not-allowed";
+    function getEmojiForType(type) {
+        const emojis = {
+            'novice': '🍝',
+            'experienced': '🥐',
+            'beginner': '🍣',
+            'advanced': '🥩',
+            'default': '🍳'
+        };
+        return emojis[type] || emojis['default'];
+    }
+
+    function selectClass(slotId, classData) {
+        const card = event.target.closest('.class-card');
+        const name = card.querySelector('.class-title').textContent;
+        const description = card.querySelector('.class-description').textContent;
+        
+        selectedClass = {
+            id: slotId,
+            name: name,
+            description: description,
+            price: parseInt(card.querySelector('.class-price').textContent.replace(/\D/g, '')),
+            rental_price: 800
+        };
+        
+        document.getElementById('selectedClassName').textContent = selectedClass.name;
+        document.getElementById('selectedClassDescription').textContent = description;
+        document.getElementById('summaryName').textContent = selectedClass.name;
+        document.getElementById('rentalPriceDisplay').textContent = selectedClass.rental_price;
+        
+        showBookingScreen();
+        calculatePrice();
+    }
+            
+        
+        
+        function showCatalog() {
+            document.getElementById('catalogScreen').classList.add('active');
+            document.getElementById('bookingScreen').classList.remove('active');
+        }
+        
+        function showBookingScreen() {
+            document.getElementById('catalogScreen').classList.remove('active');
+            document.getElementById('bookingScreen').classList.add('active');
+        }
+        
+        function calculatePrice() {
+            if (!selectedClass) return;
+            const seats = parseInt(document.getElementById('seats').value) || 0;
+            const equipment = document.querySelector('input[name="equipment"]:checked').value;
+            
+            let totalPrice = seats * selectedClass.price;
+            if (equipment === 'rental') {
+                totalPrice += seats * selectedClass.rental_price;
+            }
+            
+            document.getElementById('priceDisplay').textContent = `Расчет стоимости: ${totalPrice.toLocaleString('ru-RU')} ₽`;
+            document.getElementById('summarySeats').textContent = seats;
+            document.getElementById('summaryEquipment').textContent = equipment === 'rental' ? 'Прокат' : 'Своя';
+            document.getElementById('summaryTotal').textContent = `${totalPrice.toLocaleString('ru-RU')} ₽`;
+        }
+        
+        function validateSeats() {
+            const seatsInput = document.getElementById('seats');
+            const seatsError = document.getElementById('seatsError');
+            const seats = parseInt(seatsInput.value);
+            
+            if (seats < 1 || seats > 12 || isNaN(seats)) {
+                seatsError.classList.add('show');
+                seatsInput.style.borderColor = '#dc3545';
+                return false;
             } else {
-                btn.disabled = false;
-                btn.style.background = "var(--accent-color)";
-                btn.style.cursor = "pointer";
+                seatsError.classList.remove('show');
+                seatsInput.style.borderColor = '#e9ecef';
+                return true;
             }
         }
-
-        function openAuthModal() { document.getElementById('authModal').style.display = 'flex'; }
-        // Дополнительное требование i18n
-        function closeAuthModal() { document.getElementById('authModal').style.display = 'none'; }
-        // Закрытие бронирования
-        function closeModal() { document.getElementById('bookingModal').style.display = 'none'; }
-
-        function submitBooking(event) {
-            event.preventDefault();
-            alert(`🎉 Бронь успешно создана!\nСтатус: Ожидает оплаты на месте (FR-17)`);
-            closeModal();
+        
+        function validateAllergies() {
+            const allergiesInput = document.getElementById('allergies');
+            const allergiesError = document.getElementById('allergiesError');
+            const allergies = allergiesInput.value.trim();
+            
+            if (allergies === '') {
+                allergiesError.classList.add('show');
+                allergiesInput.style.borderColor = '#dc3545';
+                return false;
+            } else {
+                allergiesError.classList.remove('show');
+                allergiesInput.style.borderColor = '#e9ecef';
+                return true;
+            }
         }
-
-        // Автоматический старт
-        loadCatalog();
+        
+        function validateEmail(email) {
+            const emailInput = document.getElementById('email');
+            const emailError = document.getElementById('emailError');
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            
+            if (!emailRegex.test(email)) {
+                emailError.classList.add('show');
+                emailInput.style.borderColor = '#dc3545';
+                return false;
+            } else {
+                emailError.classList.remove('show');
+                emailInput.style.borderColor = '#e9ecef';
+                return true;
+            }
+        }
+        
+        function validatePassword(password) {
+            const passwordInput = document.getElementById('password');
+            const passwordError = document.getElementById('passwordError');
+            
+            if (password.length < 6) {
+                passwordError.classList.add('show');
+                passwordInput.style.borderColor = '#dc3545';
+                return false;
+            } else {
+                passwordError.classList.remove('show');
+                passwordInput.style.borderColor = '#e9ecef';
+                return true;
+            }
+        }
+        
+        async function submitForm(event) {
+            event.preventDefault();
+            
+            const seatsValid = validateSeats();
+            const allergiesValid = validateAllergies();
+            
+            if (!seatsValid || !allergiesValid) {
+                alert('Пожалуйста, исправьте ошибки в форме');
+                return false;
+            }
+            
+            const seats = parseInt(document.getElementById('seats').value);
+            const equipment = document.querySelector('input[name="equipment"]:checked').value;
+            const allergies = document.getElementById('allergies').value.trim();
+            
+            const bookingData = {
+                slot_id: selectedClass.id,
+                seats: seats,
+                needs_rental: equipment === 'rental',
+                comment: allergies
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/bookings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bookingData)
+                });
+                
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                alert('Бронь успешно подтверждена!');
+                showCatalog();
+                return true;
+            } catch (error) {
+                console.error('Ошибка создания брони:', error);
+                alert('Не удалось создать бронь. Проверьте консоль или попробуйте позже.');
+                return false;
+            }
+        }
+        
+        function login(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!validateEmail(email) || !validatePassword(password)) return false;
+            
+            alert('Вход выполнен успешно!');
+            closeLoginModal();
+            return true;
+        }
+        
+        function cancelBooking() {
+            if (confirm('Вы уверены, что хотите отменить бронь?')) {
+                document.getElementById('bookingForm').reset();
+                calculatePrice();
+                showCatalog();
+            }
+        }
+        
+        function showLoginModal() { document.getElementById('loginModal').classList.add('show'); }
+        function closeLoginModal() { document.getElementById('loginModal').classList.remove('show'); }
+        
+        window.onload = function() {
+            loadClasses();
+        };
     </script>
 </body>
 </html>
